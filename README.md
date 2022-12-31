@@ -4,7 +4,9 @@ Gen an iOS project
 
 ### Usage
 
+```shell
 Dragonfly <Project Name>
+```
 
 ### Install
 
