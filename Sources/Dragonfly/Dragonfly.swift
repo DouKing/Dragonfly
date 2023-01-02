@@ -12,7 +12,7 @@ public struct Dragonfly {
         
         let templateName = ".Template"
         //_ = shell("git clone git@github.com:DouKing/iOSTemplate.git ./\(templateName)")
-        let result = execute(["git", "clone", "git@github.com:DouKing/iOSTemplate.git", "./\(templateName)"])
+        let result = execute(["git", "clone", repo, "./\(templateName)"])
         
         let srcPath = "\(rootDir)/\(templateName)/codebase"
         let dstPath = "\(rootDir)/\(projName)"
