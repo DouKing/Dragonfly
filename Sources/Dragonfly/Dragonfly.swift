@@ -28,6 +28,9 @@ public struct Dragonfly {
         func modifyConfig(path: String) {
             let content = try! NSString(contentsOfFile: path, encoding: NSUTF8StringEncoding)
             let newContent = content.replacingOccurrences(of: "Runner", with: projName)
+                .replacingOccurrences(of: "com.sample.debug", with: "com.sample.\(projName).debug")
+                .replacingOccurrences(of: "com.sample.develop", with: "com.sample.\(projName).develop")
+                .replacingOccurrences(of: "com.sample.release", with: "com.sample.\(projName).release")
             do {
                 try newContent.write(toFile: path, atomically: true, encoding: .utf8)
             } catch {
