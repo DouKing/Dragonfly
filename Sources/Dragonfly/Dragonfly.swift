@@ -1,9 +1,15 @@
 import Foundation
+import Combine
 
 @main
 public struct Dragonfly {
     public static func main() {
         debugPrint(CommandLine.argc, CommandLine.arguments)
+        _ = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { time in
+                print("\u{1B}[1A\u{1B}[K\(time)")
+            }
         
         let rootDir = FileManager.default.currentDirectoryPath
         let projName = CommandLine.arguments[1]
@@ -11,11 +17,15 @@ public struct Dragonfly {
         let repo = "git@github.com:DouKing/iOSTemplate.git"
         
         let templateName = ".Template"
-        //_ = shell("git clone git@github.com:DouKing/iOSTemplate.git ./\(templateName)")
-        let result = execute(["git", "clone", repo, "./\(templateName)"])
+        _ = shell("git clone \(repo) ./\(templateName)")
+//        _ = shell("git", "clone", repo, "./\(templateName)")
         
         let srcPath = "\(rootDir)/\(templateName)/codebase"
         let dstPath = "\(rootDir)/\(projName)"
+        
+        try? FileManager.default.removeItem(atPath: "\(rootDir)/\(templateName)/codebase/Application/Runner.xcodeproj/")
+        try? FileManager.default.removeItem(atPath: "\(rootDir)/\(templateName)/codebase/Runner.xcworkspace/")
+        try? FileManager.default.removeItem(atPath: "\(rootDir)/\(templateName)/codebase/Podfile.lock")
         
         var isDir: ObjCBool = false
         let isExists = FileManager.default.fileExists(atPath: dstPath, isDirectory: &isDir)
@@ -52,21 +62,40 @@ public struct Dragonfly {
     }
 }
 
-func shell(_ command: String) -> String {
+@discardableResult
+func shell(_ args: String...) -> (status: Int32, result: String?) {
     let task = Process()
     let outputPipe = Pipe()
     let errorPipe = Pipe()
     
     task.standardOutput = outputPipe
     task.standardError = errorPipe
-    task.arguments = ["-c", command]
+    task.arguments = ["-c"] + args
     task.executableURL = URL(fileURLWithPath: "/bin/zsh")
+    
+    outputPipe.fileHandleForReading.readabilityHandler = { fileHandle in
+        let data = fileHandle.availableData
+        if data.count > 0,
+           let result = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) {
+            print(result)
+        }
+    }
+    
+    errorPipe.fileHandleForReading.readabilityHandler = { fileHandle in
+        let data = fileHandle.availableData
+        if data.count > 0,
+           let result = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) {
+            print(result)
+        }
+    }
     
     do {
         try task.run()
         task.waitUntilExit()
     } catch {
-        print("There was an error running the command: \(command)")
+        print("There was an error running the command: \(args)")
         print(error.localizedDescription)
         exit(1)
     }
@@ -78,26 +107,11 @@ func shell(_ command: String) -> String {
            let errorString = String(data: errorData, encoding: .utf8) {
             print("Encountered the following error running the command:")
             print(errorString)
+            //exit(1)
         }
-        exit(1)
+
+        return (task.terminationStatus, nil)
     }
     
-    return outputString
-}
-
-func execute(_ args: [String]) -> (status: Int32, result: String) {
-    let process = Process()
-    process.launchPath = "/usr/bin/env"
-    process.arguments = args
-    
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    
-    process.launch()
-    process.waitUntilExit()
-    
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let output: String = String(data: data, encoding: .utf8)!
-    
-    return (status: process.terminationStatus, result: output)
+    return (task.terminationStatus, outputString)
 }
